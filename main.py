@@ -104,7 +104,7 @@ if __name__ == '__main__':
     }
 
     # Load Preserved tweet id
-    if os.path.exists('./' + settings.PICKLE_FILE_PATH):
+    if os.path.exists('./' + settings.PICKLE_FILE_PATH): # if PICKLE_FILE_PATH is ABSOLUTE path, delete './' +
         with open(settings.PICKLE_FILE_PATH, mode='rb') as loadfile:
             twitter_params['since_id'] = pickle.load(loadfile)['newest_id']
 

@@ -4,7 +4,7 @@ search tweet and post to slack
 
 # Requirement
 
-* requests
+* requests 2.25.11
 * Twitter Bearer
 * Slack token
 
@@ -21,20 +21,23 @@ pip install requests
 ```python
 TWITTER_KEY = ''  # Your Twitter Bearer
 TWEET_QUERY = 'from:TwitterDev'
-MAX_RESULTS = 20 # >= 10
+MAX_RESULTS = 20 # Minimum is 10
 
 SLACK_TOKEN = ''  # Your Slack token
 CHANNEL_TO_POST = '#random'
 
-TWEET_FILE_PATH = 'tweets.jsonl'
-LOG_FILE_PATH = 'execute.log'
-PICKLE_FILE_PATH = 'newest_id.pickle'
+TWEET_FILE_PATH = 'tweets.jsonl' # If you will use this in crontab, set ABSOLUTE path.
+LOG_FILE_PATH = 'execute.log' # If you will use this in crontab, set ABSOLUTE path.
+PICKLE_FILE_PATH = 'newest_id.pickle' # If you will use this in crontab, set ABSOLUTE path.
 ```
 
 # Usage
 
 ```bash
-python main.py
+git clone https://github.com/poc-sleepy/egoser_motor_phantom.git
+cd egoser_motor_phantom
+vi settings.py
+python3 main.py
 ```
 
 # Note

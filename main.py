@@ -8,7 +8,7 @@
 import sys
 import os
 import pickle
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 import requests
 
@@ -41,8 +41,8 @@ class SlackDriver:
         self.__token = token  # slack_api_token
         self.__headers = {'Content-Type': 'application/json'}
 
-    def send_message(self, message, channel):
-        params = {'token': self.__token, 'channel': channel, 'text': message}
+    def send_blocks_message(self, blocks, channel):
+        params = {'token': self.__token, 'channel': channel, 'blocks': str(blocks)}
 
         r = requests.post('https://slack.com/api/chat.postMessage',
                           headers=self.__headers,
@@ -66,6 +66,7 @@ class Logger:
 
     def __write_log(self, msg, log_level):
         with open(self.__filepath, mode='a', encoding='utf_8') as outfile:
+            # FixMe: タイムゾーンがJST前提
             timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S') + ' +09:00'
             outfile.write('{}\t[{}]: {}\n'.format(timestamp, log_level, msg))
 
@@ -85,7 +86,50 @@ def merge_tweet_author(tweets, users):
             if tweet['author_id'] == user['id']:
                 tweet['username'] = user['username']
                 tweet['name'] = user['name']
+                tweet['profile_image_url'] = user['profile_image_url']
     return tweets
+
+
+def generate_blocks_from_tweet(tweet):
+    tweet_url = 'https://twitter.com/{}/status/{}'.format(tweet['username'], tweet['id'])
+    body_text = 'by <{}|*{}* (@{})>\n'.format(tweet_url, tweet['name'], tweet['username'])
+    body_text += tweet['text']
+
+    # HACK: created_atのマイクロ秒が常に.000かは未確認
+    datetime_created_at_utc = datetime.strptime(tweet['created_at'].replace('Z', '+0000'), '%Y-%m-%dT%H:%M:%S.000%z')
+    # FixMe: タイムゾーンが決め打ち
+    timezone_jst = timezone(timedelta(hours=9))
+    datetime_created_at_jst = datetime_created_at_utc.astimezone(timezone_jst)
+    text_created_at = datetime_created_at_jst.strftime('%Y/%m/%d %H:%M:%S')
+
+    blocks = [
+        {
+            'type': 'section',
+            'text': {
+                'type': 'mrkdwn',
+                'text': body_text
+            },
+            'accessory': {
+                'type': 'image',
+                'image_url': tweet['profile_image_url'],
+                'alt_text': tweet['name']
+            }
+        },
+        {
+            'type': 'context',
+            'elements': [
+                {
+                    'type': 'plain_text',
+                    'text': '{} ({})'.format(text_created_at, tweet['source'])
+                }
+            ]
+        },
+        {
+            'type': 'divider'
+        }
+    ]
+
+    return blocks
 
 
 if __name__ == '__main__':
@@ -98,13 +142,13 @@ if __name__ == '__main__':
     twitter_params = {
         'query': settings.TWEET_QUERY,
         'max_results': settings.MAX_RESULTS,
-        'tweet.fields': 'created_at',
+        'tweet.fields': 'created_at,source',
         'expansions': 'author_id',
-        'user.fields': 'username,name',
+        'user.fields': 'username,name,profile_image_url',
     }
 
     # Load Preserved tweet id
-    if os.path.exists('./' + settings.PICKLE_FILE_PATH): # if PICKLE_FILE_PATH is ABSOLUTE path, delete './' +
+    if os.path.exists('./' + settings.PICKLE_FILE_PATH):  # if PICKLE_FILE_PATH is ABSOLUTE path, delete './' +
         with open(settings.PICKLE_FILE_PATH, mode='rb') as loadfile:
             twitter_params['since_id'] = pickle.load(loadfile)['newest_id']
 
@@ -128,9 +172,10 @@ if __name__ == '__main__':
         with open(settings.TWEET_FILE_PATH, mode='a', encoding='utf_8') as outfile:
             for tweet in tweets:
                 outfile.write(str(tweet) + '\n')
-                slack_msg = 'https://twitter.com/twitter/status/{}'.format(tweet['id'])
+                blocks = generate_blocks_from_tweet(tweet)
                 try:
-                    slack.send_message(slack_msg, settings.CHANNEL_TO_POST)
+                    # pass
+                    slack.send_blocks_message(blocks, settings.CHANNEL_TO_POST)
                 except Exception as err:
                     logger.error(err)
                     print(err, file=sys.stderr)

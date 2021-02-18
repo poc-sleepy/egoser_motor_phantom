@@ -41,8 +41,8 @@ class SlackDriver:
         self.__token = token  # slack_api_token
         self.__headers = {'Content-Type': 'application/json'}
 
-    def send_blocks_message(self, blocks, channel):
-        params = {'token': self.__token, 'channel': channel, 'blocks': str(blocks)}
+    def send_attachments_message(self, attachments, channel):
+        params = {'token': self.__token, 'channel': channel, 'attachments': str(attachments)}
 
         r = requests.post('https://slack.com/api/chat.postMessage',
                           headers=self.__headers,
@@ -90,7 +90,11 @@ def merge_tweet_author(tweets, users):
     return tweets
 
 
-def generate_blocks_from_tweet(tweet):
+def generate_attachments_from_tweet(tweet):
+    # FixMe: リツイート判定はもっといい方法があるのでは？
+    is_retweet = tweet['text'].startswith('RT @')
+    color_text = settings.RETWEET_POST_COLOR if is_retweet else settings.TWEET_POST_COLOR
+
     tweet_url = 'https://twitter.com/{}/status/{}'.format(tweet['username'], tweet['id'])
     body_text = 'by <{}|*{}* (@{})>\n'.format(tweet_url, tweet['name'], tweet['username'])
     body_text += tweet['text']
@@ -129,7 +133,14 @@ def generate_blocks_from_tweet(tweet):
         }
     ]
 
-    return blocks
+    attachments = [
+        {
+            'color': color_text,
+            'blocks': blocks
+        }
+    ]
+
+    return attachments
 
 
 if __name__ == '__main__':
@@ -148,6 +159,7 @@ if __name__ == '__main__':
     }
 
     # Load Preserved tweet id
+    # FixMe: 絶対パスの対応
     if os.path.exists('./' + settings.PICKLE_FILE_PATH):  # if PICKLE_FILE_PATH is ABSOLUTE path, delete './' +
         with open(settings.PICKLE_FILE_PATH, mode='rb') as loadfile:
             twitter_params['since_id'] = pickle.load(loadfile)['newest_id']
@@ -172,10 +184,9 @@ if __name__ == '__main__':
         with open(settings.TWEET_FILE_PATH, mode='a', encoding='utf_8') as outfile:
             for tweet in tweets:
                 outfile.write(str(tweet) + '\n')
-                blocks = generate_blocks_from_tweet(tweet)
+                attachments = generate_attachments_from_tweet(tweet)
                 try:
-                    # pass
-                    slack.send_blocks_message(blocks, settings.CHANNEL_TO_POST)
+                    slack.send_attachments_message(attachments, settings.CHANNEL_TO_POST)
                 except Exception as err:
                     logger.error(err)
                     print(err, file=sys.stderr)

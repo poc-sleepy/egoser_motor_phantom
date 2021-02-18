@@ -159,9 +159,12 @@ if __name__ == '__main__':
     }
 
     # Load Preserved tweet id
-    # FixMe: 絶対パスの対応
-    if os.path.exists('./' + settings.PICKLE_FILE_PATH):  # if PICKLE_FILE_PATH is ABSOLUTE path, delete './' +
-        with open(settings.PICKLE_FILE_PATH, mode='rb') as loadfile:
+    pickle_path = settings.PICKLE_FILE_PATH
+    if not settings.PICKLE_PATH_IS_ABSOLUTE:
+        pickle_path = './' + pickle_path
+
+    if os.path.exists(pickle_path):
+        with open(pickle_path, mode='rb') as loadfile:
             twitter_params['since_id'] = pickle.load(loadfile)['newest_id']
 
     try:
@@ -193,6 +196,6 @@ if __name__ == '__main__':
                     sys.exit(1)
 
         # Preserve newest tweet id
-        with open(settings.PICKLE_FILE_PATH, mode='wb') as outfile:
+        with open(pickle_path, mode='wb') as outfile:
             to_dump = {'newest_id': meta_data['newest_id']}
             pickle.dump(to_dump, outfile)

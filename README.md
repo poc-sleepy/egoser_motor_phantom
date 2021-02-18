@@ -16,28 +16,18 @@ search tweet and post to slack
 pip install requests
 ```
 
-* create settings.py
-
-```python
-TWITTER_KEY = ''  # Your Twitter Bearer
-TWEET_QUERY = 'from:TwitterDev'
-MAX_RESULTS = 20 # Minimum is 10
-
-SLACK_TOKEN = ''  # Your Slack token
-CHANNEL_TO_POST = '#random'
-
-TWEET_FILE_PATH = 'tweets.jsonl' # If you will use this in crontab, set ABSOLUTE path.
-LOG_FILE_PATH = 'execute.log' # If you will use this in crontab, set ABSOLUTE path.
-PICKLE_FILE_PATH = 'newest_id.pickle' # If you will use this in crontab, set ABSOLUTE path.
-```
+* Edit settings_template.py (You need set TWITTER_KEY and SLACK_TOKEN in settings_template.py)
+* Save settings_template.py as settings.py
 
 # Usage
 
 ```bash
-git clone https://github.com/poc-sleepy/egoser_motor_phantom.git
-cd egoser_motor_phantom
-vi settings.py
-python3 main.py
+$ git clone https://github.com/poc-sleepy/egoser_motor_phantom.git
+$ cd egoser_motor_phantom
+$ vi settings_template.py
+(edit...)
+$ cp settings_template.py settings.py
+$ python3 main.py
 ```
 
 # Note

@@ -144,6 +144,7 @@ def generate_attachments_from_tweet(tweet):
 
     return attachments
 
+
 def main(*args):
     global logger
     logger = Logger(os.environ.get('LOG_FILE_PATH'))
@@ -168,7 +169,7 @@ def main(*args):
         s3_object = boto3.resource('s3').Object(pickle_s3_bucket, pickle_path)
 
     # Load Preserved tweet id
-    if s3_object:
+    if 's3_object' in locals():
         try:
             twitter_params['since_id'] = pickle.loads(s3_object.get()['Body'].read())['newest_id']
         except botocore.exceptions.ClientError as err:
@@ -207,20 +208,22 @@ def main(*args):
                 outfile.write(str(tweet) + '\n')
                 attachments = generate_attachments_from_tweet(tweet)
                 try:
-                    slack.send_attachments_message(attachments, os.environ.get('CHANNEL_TO_POST'))
+                    pass
+                    # slack.send_attachments_message(attachments, os.environ.get('CHANNEL_TO_POST'))
                 except Exception as err:
                     logger.error(err)
                     print(err, file=sys.stderr)
                     sys.exit(1)
 
         # Preserve newest tweet id
-        if s3_object:
+        if 's3_object' in locals():
             to_dump = {'newest_id': meta_data['newest_id']}
             s3_object.put(Body=pickle.dumps(to_dump))
         else:
             with open(pickle_path, mode='wb') as outfile:
                 to_dump = {'newest_id': meta_data['newest_id']}
                 pickle.dump(to_dump, outfile)
+
 
 if __name__ == '__main__':
     dotenv_path = join(dirname(__file__), '.env')

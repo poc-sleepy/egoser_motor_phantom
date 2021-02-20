@@ -11,10 +11,10 @@ import pickle
 from datetime import datetime, timedelta, timezone
 
 import requests
+import boto3
+import botocore
 
 import settings
-
-
 class TwitterDriver:
 
     def __init__(self, bearer):
@@ -158,14 +158,26 @@ def main(*args):
         'user.fields': 'username,name,profile_image_url',
     }
 
-    # Load Preserved tweet id
-    pickle_path = settings.PICKLE_FILE_PATH
-    if not settings.PICKLE_PATH_IS_ABSOLUTE:
-        pickle_path = './' + pickle_path
+    if settings.PICKLE_S3_BUCKET:
+        s3_object = boto3.resource('s3').Object(settings.PICKLE_S3_BUCKET, settings.PICKLE_FILE_PATH)
 
-    if os.path.exists(pickle_path):
-        with open(pickle_path, mode='rb') as loadfile:
-            twitter_params['since_id'] = pickle.load(loadfile)['newest_id']
+    # Load Preserved tweet id
+    if s3_object:
+        try:
+            twitter_params['since_id'] = pickle.loads(s3_object.get()['Body'].read())['newest_id']
+        except botocore.exceptions.ClientError as err:
+            if err.response['Error']['Code'] == 'NoSuchKey':
+                print('since_id not found')
+            else:
+                raise Exception(err)
+    else:
+        pickle_path = settings.PICKLE_FILE_PATH
+        if not settings.PICKLE_PATH_IS_ABSOLUTE:
+            pickle_path = './' + pickle_path
+
+        if os.path.exists(pickle_path):
+            with open(pickle_path, mode='rb') as loadfile:
+                twitter_params['since_id'] = pickle.load(loadfile)['newest_id']
 
     try:
         json = twitter.search_recent(twitter_params)
@@ -196,9 +208,13 @@ def main(*args):
                     sys.exit(1)
 
         # Preserve newest tweet id
-        with open(pickle_path, mode='wb') as outfile:
+        if s3_object:
             to_dump = {'newest_id': meta_data['newest_id']}
-            pickle.dump(to_dump, outfile)
+            s3_object.put(Body=pickle.dumps(to_dump))
+        else:
+            with open(pickle_path, mode='wb') as outfile:
+                to_dump = {'newest_id': meta_data['newest_id']}
+                pickle.dump(to_dump, outfile)
 
 if __name__ == '__main__':
     main()

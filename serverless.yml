@@ -7,17 +7,50 @@ plugins:
 
 custom:
   pythonRequirements:
+    # docker内でビルドすることでローカルにruntimeと同じバージョンのpythonがなくてもデプロイできる
     dockerizePip: true
 
 provider:
   name: aws
   runtime: python3.8
+  timeout: 10
   lambdaHashingVersion: 20201221
   stage: dev
   region: ap-northeast-1
+  iam:
+    role:
+      statements:
+        # S3バケットへの読み書きを許可
+        - Effect: "Allow"
+          Action:
+            - "s3:GetObject"
+            - "s3:PutObject"
+          Resource:
+            Fn::Join:
+              - ""
+              - - "arn:aws:s3:::"
+                - "Ref": "S3Bucket"
+                - "/*"
+        # ListBucketも許可しないとオブジェクトが存在しないとき404ではなく403になってしまう
+        # https://aws.amazon.com/jp/premiumsupport/knowledge-center/s3-troubleshoot-403/
+        - Effect: "Allow"
+          Action:
+            - "s3:ListBucket"
+          Resource:
+            Fn::Join:
+              - ""
+              - - "arn:aws:s3:::"
+                - "Ref": "S3Bucket"
 
 functions:
   main:
     handler: main.main
     events:
       - schedule: rate(2 minutes)
+
+resources:
+  Resources:
+    S3Bucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: egoser-motor-phantom

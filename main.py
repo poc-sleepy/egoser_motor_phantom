@@ -143,9 +143,11 @@ def generate_attachments_from_tweet(tweet):
     return attachments
 
 def main(*args):
+    global logger
+    logger = Logger(settings.LOG_FILE_PATH)
+
     twitter = TwitterDriver(settings.TWITTER_KEY)
     slack = SlackDriver(settings.SLACK_TOKEN)
-    logger = Logger(settings.LOG_FILE_PATH)
 
     # QUERY
     twitter_params = {

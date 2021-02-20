@@ -16,6 +16,7 @@ import requests
 import boto3
 import botocore
 
+
 class TwitterDriver:
 
     def __init__(self, bearer):

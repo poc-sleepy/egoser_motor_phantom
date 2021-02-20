@@ -7,14 +7,15 @@
 
 import sys
 import os
+from os.path import join, dirname
 import pickle
 from datetime import datetime, timedelta, timezone
 
+from dotenv import load_dotenv
 import requests
 import boto3
 import botocore
 
-import settings
 class TwitterDriver:
 
     def __init__(self, bearer):
@@ -93,7 +94,7 @@ def merge_tweet_author(tweets, users):
 def generate_attachments_from_tweet(tweet):
     # FixMe: リツイート判定はもっといい方法があるのでは？
     is_retweet = tweet['text'].startswith('RT @')
-    color_text = settings.RETWEET_POST_COLOR if is_retweet else settings.TWEET_POST_COLOR
+    color_text = os.environ.get('RETWEET_POST_COLOR') if is_retweet else os.environ.get('TWEET_POST_COLOR')
 
     tweet_url = 'https://twitter.com/{}/status/{}'.format(tweet['username'], tweet['id'])
     body_text = 'by <{}|*{}* (@{})>\n'.format(tweet_url, tweet['name'], tweet['username'])
@@ -144,15 +145,15 @@ def generate_attachments_from_tweet(tweet):
 
 def main(*args):
     global logger
-    logger = Logger(settings.LOG_FILE_PATH)
+    logger = Logger(os.environ.get('LOG_FILE_PATH'))
 
-    twitter = TwitterDriver(settings.TWITTER_KEY)
-    slack = SlackDriver(settings.SLACK_TOKEN)
+    twitter = TwitterDriver(os.environ.get('TWITTER_KEY'))
+    slack = SlackDriver(os.environ.get('SLACK_TOKEN'))
 
     # QUERY
     twitter_params = {
-        'query': settings.TWEET_QUERY,
-        'max_results': settings.MAX_RESULTS,
+        'query': os.environ.get('TWEET_QUERY'),
+        'max_results': int(os.environ.get('MAX_RESULTS')),
         'tweet.fields': 'created_at,source',
         'expansions': 'author_id',
         'user.fields': 'username,name,profile_image_url',
@@ -171,8 +172,9 @@ def main(*args):
             else:
                 raise Exception(err)
     else:
-        pickle_path = settings.PICKLE_FILE_PATH
-        if not settings.PICKLE_PATH_IS_ABSOLUTE:
+        pickle_path = os.environ.get('PICKLE_FILE_PATH')
+        pickle_path_is_absolute = os.environ.get('PICKLE_PATH_IS_ABSOLUTE').lower() == 'true'
+        if not pickle_path_is_absolute:
             pickle_path = './' + pickle_path
 
         if os.path.exists(pickle_path):
@@ -196,12 +198,12 @@ def main(*args):
         tweets = merge_tweet_author(json['data'], json['includes']['users'])
         tweets.reverse()  # created_date ASC
 
-        with open(settings.TWEET_FILE_PATH, mode='a', encoding='utf_8') as outfile:
+        with open(os.environ.get('TWEET_FILE_PATH'), mode='a', encoding='utf_8') as outfile:
             for tweet in tweets:
                 outfile.write(str(tweet) + '\n')
                 attachments = generate_attachments_from_tweet(tweet)
                 try:
-                    slack.send_attachments_message(attachments, settings.CHANNEL_TO_POST)
+                    slack.send_attachments_message(attachments, os.environ.get('CHANNEL_TO_POST'))
                 except Exception as err:
                     logger.error(err)
                     print(err, file=sys.stderr)
@@ -217,4 +219,6 @@ def main(*args):
                 pickle.dump(to_dump, outfile)
 
 if __name__ == '__main__':
+    dotenv_path = join(dirname(__file__), '.env')
+    load_dotenv(dotenv_path)
     main()

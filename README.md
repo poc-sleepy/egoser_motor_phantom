@@ -1,31 +1,38 @@
 # eGOseRmOToRpHAntOM
 
-search tweet and post to slack
+search tweets and post them to slack
 
 # Requirement
 
-- requests 2.25.11
-- Twitter Bearer
-- Slack token
+Python Package
+
+- requests 2.25.1
+- python-dotenv 0.15.0
+
+API Token
+
+- Your Twitter Bearer
+- Your Slack token
 
 # Installation
 
-- Install Requests
+- Install External Python Package
 
 ```bash
-pip install requests
+pip install -r requirements.txt
 ```
 
-- Copy settings_template.py to settings.py
-- Edit settings.py (You need set TWITTER_KEY and SLACK_TOKEN in settings_template.py)
+- Copy `.env.example` to `.env`
+- Edit `.env` (You need set `TWITTER_KEY` and `SLACK_TOKEN`)
 
 # Usage
 
 ```bash
 $ git clone https://github.com/poc-sleepy/egoser_motor_phantom.git
 $ cd egoser_motor_phantom
-$ cp settings_template.py settings.py
-$ vi settings.py
+$ pip install -r requirements.txt
+$ cp .env.example .env
+$ vi .env
 (edit...)
 $ python3 main.py
 ```

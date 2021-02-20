@@ -165,7 +165,7 @@ def main(*args):
 
     # PICKLE_S3_BUCKETが設定されているときはnewest_idをS3に保存する
     if pickle_s3_bucket:
-        s3_object = boto3.resource('s3').Object(pickle_s3_bucket, pickle_file_path)
+        s3_object = boto3.resource('s3').Object(pickle_s3_bucket, pickle_path)
 
     # Load Preserved tweet id
     if s3_object:

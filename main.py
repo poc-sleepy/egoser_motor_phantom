@@ -11,8 +11,10 @@ from os.path import join, dirname
 import pickle
 from datetime import datetime, timedelta, timezone
 
-import requests
 from dotenv import load_dotenv
+import requests
+import boto3
+import botocore
 
 
 class TwitterDriver:
@@ -142,15 +144,12 @@ def generate_attachments_from_tweet(tweet):
 
     return attachments
 
-
-if __name__ == '__main__':
-
-    dotenv_path = join(dirname(__file__), '.env')
-    load_dotenv(dotenv_path)
+def main(*args):
+    global logger
+    logger = Logger(os.environ.get('LOG_FILE_PATH'))
 
     twitter = TwitterDriver(os.environ.get('TWITTER_KEY'))
     slack = SlackDriver(os.environ.get('SLACK_TOKEN'))
-    logger = Logger(os.environ.get('LOG_FILE_PATH'))
 
     # QUERY
     twitter_params = {
@@ -161,15 +160,30 @@ if __name__ == '__main__':
         'user.fields': 'username,name,profile_image_url',
     }
 
-    # Load Preserved tweet id
+    pickle_s3_bucket = os.environ.get('PICKLE_S3_BUCKET')
     pickle_path = os.environ.get('PICKLE_FILE_PATH')
-    pickle_path_is_absolute = os.environ.get('PICKLE_PATH_IS_ABSOLUTE').lower() == 'true'
-    if not pickle_path_is_absolute:
-        pickle_path = './' + pickle_path
 
-    if os.path.exists(pickle_path):
-        with open(pickle_path, mode='rb') as loadfile:
-            twitter_params['since_id'] = pickle.load(loadfile)['newest_id']
+    # PICKLE_S3_BUCKETが設定されているときはnewest_idをS3に保存する
+    if pickle_s3_bucket:
+        s3_object = boto3.resource('s3').Object(pickle_s3_bucket, pickle_path)
+
+    # Load Preserved tweet id
+    if s3_object:
+        try:
+            twitter_params['since_id'] = pickle.loads(s3_object.get()['Body'].read())['newest_id']
+        except botocore.exceptions.ClientError as err:
+            if err.response['Error']['Code'] == 'NoSuchKey':
+                print('since_id not found')
+            else:
+                raise Exception(err)
+    else:
+        pickle_path_is_absolute = os.environ.get('PICKLE_PATH_IS_ABSOLUTE').lower() == 'true'
+        if not pickle_path_is_absolute:
+            pickle_path = './' + pickle_path
+
+        if os.path.exists(pickle_path):
+            with open(pickle_path, mode='rb') as loadfile:
+                twitter_params['since_id'] = pickle.load(loadfile)['newest_id']
 
     try:
         json = twitter.search_recent(twitter_params)
@@ -200,6 +214,15 @@ if __name__ == '__main__':
                     sys.exit(1)
 
         # Preserve newest tweet id
-        with open(pickle_path, mode='wb') as outfile:
+        if s3_object:
             to_dump = {'newest_id': meta_data['newest_id']}
-            pickle.dump(to_dump, outfile)
+            s3_object.put(Body=pickle.dumps(to_dump))
+        else:
+            with open(pickle_path, mode='wb') as outfile:
+                to_dump = {'newest_id': meta_data['newest_id']}
+                pickle.dump(to_dump, outfile)
+
+if __name__ == '__main__':
+    dotenv_path = join(dirname(__file__), '.env')
+    load_dotenv(dotenv_path)
+    main()

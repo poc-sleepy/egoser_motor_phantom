@@ -99,6 +99,8 @@ celerybeat-schedule
 
 # Environments
 .env
+.env.*
+!.env.example
 .venv
 env/
 venv/
@@ -126,3 +128,7 @@ dmypy.json
 newest_id.pickle
 tweets.jsonl
 .idea/
+
+# Serverless Framework
+.serverless
+node_modules

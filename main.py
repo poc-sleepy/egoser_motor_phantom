@@ -142,9 +142,7 @@ def generate_attachments_from_tweet(tweet):
 
     return attachments
 
-
-if __name__ == '__main__':
-
+def main(*args):
     twitter = TwitterDriver(settings.TWITTER_KEY)
     slack = SlackDriver(settings.SLACK_TOKEN)
     logger = Logger(settings.LOG_FILE_PATH)
@@ -199,3 +197,6 @@ if __name__ == '__main__':
         with open(pickle_path, mode='wb') as outfile:
             to_dump = {'newest_id': meta_data['newest_id']}
             pickle.dump(to_dump, outfile)
+
+if __name__ == '__main__':
+    main()

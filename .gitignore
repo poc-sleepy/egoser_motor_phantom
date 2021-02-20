@@ -130,3 +130,4 @@ tweets.jsonl
 
 # Serverless Framework
 .serverless
+node_modules

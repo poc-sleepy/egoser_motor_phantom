@@ -127,3 +127,6 @@ newest_id.pickle
 settings.py
 tweets.jsonl
 .idea/
+
+# Serverless Framework
+.serverless

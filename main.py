@@ -160,8 +160,12 @@ def main(*args):
         'user.fields': 'username,name,profile_image_url',
     }
 
-    if settings.PICKLE_S3_BUCKET:
-        s3_object = boto3.resource('s3').Object(settings.PICKLE_S3_BUCKET, settings.PICKLE_FILE_PATH)
+    pickle_s3_bucket = os.environ.get('PICKLE_S3_BUCKET')
+    pickle_path = os.environ.get('PICKLE_FILE_PATH')
+
+    # PICKLE_S3_BUCKETが設定されているときはnewest_idをS3に保存する
+    if pickle_s3_bucket:
+        s3_object = boto3.resource('s3').Object(pickle_s3_bucket, pickle_file_path)
 
     # Load Preserved tweet id
     if s3_object:
@@ -173,7 +177,6 @@ def main(*args):
             else:
                 raise Exception(err)
     else:
-        pickle_path = os.environ.get('PICKLE_FILE_PATH')
         pickle_path_is_absolute = os.environ.get('PICKLE_PATH_IS_ABSOLUTE').lower() == 'true'
         if not pickle_path_is_absolute:
             pickle_path = './' + pickle_path
